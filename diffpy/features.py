@@ -57,9 +57,16 @@ def anomModelN(MSD, dt, frame=100):
     steps, N = MSD.shape
     n = np.linspace(1, steps, steps)
 
+    # For arrays that contain NaNs
+    mask = MSD > -10000
+    cutoff = steps*np.average(mask, axis=0)
+
     Ds = np.zeros(N)
     alphas = np.zeros(N)
     for i in range(N):
+        cut = int(cutoff[i])
+        if cut < frame:
+            frame = cut
         ps, _ = curve_fit(anom, n[:frame], MSD[:frame, i], p0=[6,1])
         Ds[i] = ps[0]
         alphas[i] = ps[1]
@@ -77,10 +84,17 @@ def anomModelsN(MSD, dt, skips=1):
     steps, N = MSD.shape
     n = np.linspace(1, steps, steps)
 
+    # For arrays that contain NaNs
+    mask = MSD > -10000
+    cutoff = steps*np.average(mask, axis=0)
+
     Ds = np.zeros((steps, N))
     alphas = np.zeros((steps, N))
     for i in range(N):
         for frame in range(10, steps, skips):
+            cut = int(cutoff[i])
+            if cut < frame:
+                frame = cut
             ps, _ = curve_fit(anom, n[:frame], MSD[:frame, i], p0=[6,1])
             Ds[frame, i] = ps[0]
             alphas[frame, i] = ps[1]
@@ -94,6 +108,12 @@ def asym(x, y):
 
     # Calculuates the eigenvalues of the radius of gyration tensor
     # This tensor is just the covariance matrix of the x, y coordinates
+    n = x.shape[0]
+    # Modified n for trajectories that have NaNs
+    mask = x > -10000
+    n = n*np.average(mask)
+    x, y = x[:int(n)], y[:int(n)]
+
     eigs, vecs = np.linalg.eig(np.cov(x, y))
 
     a1 = (eigs[0]**2 - eigs[1]**2)**2/(eigs[0]**2 + eigs[1]**2)**2
@@ -101,7 +121,7 @@ def asym(x, y):
     a3 = -np.log(1 - 0.5*(eigs[0] - eigs[1])**2/(eigs[0] + eigs[1])**2)
 
     # kurtosis, which requires the eigenvectors
-    n = x.shape[0]
+
     xi, yi = x.reshape((-1,1)), y.reshape((-1,1))
     xy = np.concatenate((xi, yi), axis=1)
 
@@ -131,6 +151,12 @@ def minBoundRect(x, y):
     :param points: an nx2 matrix of coordinates
     :rval: an nx2 matrix of coordinates
     """
+    n = x.shape[0]
+    # Modified n for trajectories that have NaNs
+    mask = x > -10000
+    n = n*np.average(mask)
+    x, y = x[:int(n)], y[:int(n)]
+
 
     points = np.concatenate((x.reshape((-1, 1)), y.reshape((-1, 1))), axis=1)
     pi2 = np.pi/2.
@@ -227,8 +253,12 @@ def bound(x, y, M):
 def bounds(xs, ys, Ms):
     # boundedness
     n, _ = Ms.shape
+    # Modified for arrays that have NaNs
+    mask = Ms > -10000
+    cutoff = n*np.average(mask, axis=0)
+    n = cutoff
     Ds = (Ms[1, :] - Ms[0, :])/4
-    rs = np.sqrt(np.max(np.diff(xs, axis=0)**2 + np.diff(ys, axis=0)**2, axis=0))/2
+    rs = np.sqrt(np.nanmax(np.diff(xs, axis=0)**2 + np.diff(ys, axis=0)**2, axis=0))/2
 
     #trappedness
     bds = Ds*n/rs**2
@@ -242,8 +272,18 @@ def efficiency(x, y):
 
 
 def efficiencies(xs, ys):
-    netD = (xs[-1, :] - xs[0, :])**2 + (ys[-1, :] - ys[0, :])**2
-    total = np.sum(np.diff(xs, axis=0)**2 + np.diff(ys, axis=0)**2, axis=0)
+    # Originally used x[-1] and y[-1] to get last elements, but had to do
+    # something different for arrays with NaNs
+    #xlast, ylast = xs[-1, :], ys[-1, :]
+    n, _ = xs.shape
+    # Modified for arrays that have NaNs
+    mask = xs > -10000
+    cutoff = n*np.average(mask, axis=0)
+    n = cutoff.astype(np.int32) - 1
+    xlast, ylast = np.diag(xs[n, :]), np.diag(ys[n, :])
+
+    netD = (xlast - xs[0, :])**2 + (ylast - ys[0, :])**2
+    total = np.nansum(np.diff(xs, axis=0)**2 + np.diff(ys, axis=0)**2, axis=0)
     return netD/total
 
 
@@ -254,8 +294,18 @@ def straight(x, y):
 
 
 def straights(xs, ys):
-    netD = np.sqrt((xs[-1, :] - xs[0, :])**2 + (ys[-1, :] - ys[0, :])**2)
-    total = np.sum(np.sqrt(np.diff(xs, axis=0)**2 + np.diff(ys, axis=0)**2), axis=0)
+    # Originally used x[-1] and y[-1] to get last elements, but had to do
+    # something different for arrays with NaNs
+    #xlast, ylast = xs[-1, :], ys[-1, :]
+    n, _ = xs.shape
+    # Modified for arrays that have NaNs
+    mask = xs > -10000
+    cutoff = n*np.average(mask, axis=0)
+    n = cutoff.astype(np.int32) - 1
+    xlast, ylast = np.diag(xs[n, :]), np.diag(ys[n, :])
+
+    netD = np.sqrt((xlast - xs[0, :])**2 + (ylast - ys[0, :])**2)
+    total = np.nansum(np.sqrt(np.diff(xs, axis=0)**2 + np.diff(ys, axis=0)**2), axis=0)
     return netD/total
 
 
@@ -269,9 +319,12 @@ def fractDim(x, y):
 
 def fractDims(xs, ys):
     n, _ = xs.shape
-    n = n - 1
-    total = np.sum(np.sqrt(np.diff(xs, axis=0)**2 + np.diff(ys, axis=0)**2), axis=0) # from straight
-    d = np.sqrt(np.max(np.diff(xs, axis=0)**2 + np.diff(ys, axis=0)**2, axis=0)) # from bound
+    mask = xs > -10000
+    cutoff = n*np.average(mask, axis=0)
+    n = cutoff.astype(np.int32) - 1
+
+    total = np.nansum(np.sqrt(np.diff(xs, axis=0)**2 + np.diff(ys, axis=0)**2), axis=0) # from straight
+    d = np.sqrt(np.nanmax(np.diff(xs, axis=0)**2 + np.diff(ys, axis=0)**2, axis=0)) # from bound
 
     return np.log(n)/np.log(n*n*d/total)
 
