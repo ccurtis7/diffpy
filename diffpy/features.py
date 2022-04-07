@@ -1,7 +1,12 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath('..\\diffpy'))
 import numpy as np
+import pandas as pd
 from scipy.optimize import curve_fit
 from scipy.ndimage.interpolation import rotate
 from scipy.spatial import ConvexHull
+import msds as msds
 
 def anomalous(x, D, alpha, dt):
     # The anomalous diffusion model
@@ -356,3 +361,41 @@ def msdRatios(Ms):
     Mratio = M2x/M2y - n2x/n2y
     Mratio[n2x > n2y] = 0
     return Mratio
+
+
+def calculateFeatures(xs, ys, dt, labelled=None):
+    Ms, Gs = msds.trajsMSD(xs, ys)
+    fts = {}
+    fts['x'] = np.nanmean(xs, axis=0)
+    fts['y'] = np.nanmean(ys, axis=0)
+    fts['Diffusion Coefficient'], fts['Alpha'] = anomModelN(Ms, dt)
+    fts['Asymmetry1'], fts['Asymmetry2'], fts['Asymmetry3'], fts['Kurtosis'] = asyms(xs, ys)
+    fts['Aspect Ratio'], fts['Elongation'] = aspectRatios(xs, ys)
+    fts['Boundedness'], fts['Trappedness'] = bounds(xs, ys, Ms)
+    fts['Efficiency'], fts['Straightness'] = efficiencies(xs, ys), straights(xs, ys)
+    fts['Fractal Dimension'] = fractDims(xs, ys)
+    mrs = msdRatios(Ms)
+    fts['MSD Ratio'] = mrs[2, 20, :]
+    fts['Gaussianity'] = Gs[10, :]
+
+    N = fts['Alpha'].shape[0]
+    if labelled:
+        fts['Label'] = labelled*np.ones(N)
+
+    return Ms, pd.DataFrame(fts)
+
+    Mratio = M2x/M2y - n2x/n2y
+    Mratio[n2x > n2y] = 0
+    return Mratio
+
+
+def binFeatures(ft, bins):
+    n = bins.shape[0] - 1
+    labels = np.linspace(0, n-1, n)
+
+    xl, yl = pd.cut(ft1['x'], bins, labels=labels), pd.cut(ft1['y'], bins, labels=labels)
+    xl, yl = xl.to_numpy(), yl.to_numpy()
+    labels = n*xl + yl
+
+    mFts, sFts = ft1.groupby(by='Group').mean(), ft1.groupby(by='Group').std()
+    return mFts, sFts
