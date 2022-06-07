@@ -363,7 +363,7 @@ def msdRatios(Ms):
     return Mratio
 
 
-def calculateFeatures(xs, ys, dt, labelled=None):
+def calculateFeatures(xs, ys, dt, labelled=None, binned=None):
     Ms, Gs = msds.trajsMSD(xs, ys)
     fts = {}
     fts['x'] = np.nanmean(xs, axis=0)
@@ -382,20 +382,23 @@ def calculateFeatures(xs, ys, dt, labelled=None):
     if labelled:
         fts['Label'] = labelled*np.ones(N)
 
-    return Ms, pd.DataFrame(fts)
-
-    Mratio = M2x/M2y - n2x/n2y
-    Mratio[n2x > n2y] = 0
-    return Mratio
+    fts = pd.DataFrame(fts)
+    if binned:
+        bins = binned[0]
+        mFts, sFts = binFeatures(fts, bins)
+        return Ms, fts, mFts, sFts
+    else:
+        return Ms, fts
 
 
 def binFeatures(ft, bins):
     n = bins.shape[0] - 1
     labels = np.linspace(0, n-1, n)
 
-    xl, yl = pd.cut(ft1['x'], bins, labels=labels), pd.cut(ft1['y'], bins, labels=labels)
+    xl, yl = pd.cut(ft['x'], bins, labels=labels), pd.cut(ft['y'], bins, labels=labels)
     xl, yl = xl.to_numpy(), yl.to_numpy()
     labels = n*xl + yl
+    ft['Group'] = labels
 
-    mFts, sFts = ft1.groupby(by='Group').mean(), ft1.groupby(by='Group').std()
+    mFts, sFts = ft.groupby(by='Group').mean(), ft.groupby(by='Group').std()
     return mFts, sFts
