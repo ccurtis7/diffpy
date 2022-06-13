@@ -24,8 +24,8 @@ def read_xml(file):
     #print(particles)
 
     # Create numpy arrays
-    xs = np.zeros((frames, particles))
-    ys = np.zeros((frames, particles))
+    xs = np.ones((frames, particles))*np.nan
+    ys = np.ones((frames, particles))*np.nan
 
     # Read in data
     part = 0
@@ -37,8 +37,5 @@ def read_xml(file):
             ys[frame, part] = float(particle.attrib['y'])
             frame += 1
         part += 1
-
-    xs = ma.masked_where(xs <=0, xs)
-    ys = ma.masked_where(ys <=0, ys)
 
     return xs, ys

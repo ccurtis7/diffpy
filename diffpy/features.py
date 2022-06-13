@@ -237,7 +237,11 @@ def aspectRatios(x, y):
     elongs = np.zeros(N)
 
     for i in range(N):
-        ars[i], elongs[i] = aspectRatio(x[:, i], y[:, i])
+        try:
+            xi, yi = x[:,i][~np.isnan(x[:,i])], y[:,i][~np.isnan(x[:,i])]
+            ars[i], elongs[i] = aspectRatio(xi, yi)
+        except:
+            ars[i], elongs[i] = np.nan, np.nan
 
     return ars, elongs
 
