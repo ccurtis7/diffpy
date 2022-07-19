@@ -7,6 +7,8 @@ from scipy.optimize import curve_fit
 from scipy.ndimage.interpolation import rotate
 from scipy.spatial import ConvexHull
 import msds as msds
+from sklearn.cluster import KMeans
+from sklearn.metrics.pairwise import pairwise_distances_argmin
 
 def anomalous(x, D, alpha, dt):
     # The anomalous diffusion model
@@ -388,8 +390,11 @@ def calculateFeatures(xs, ys, dt, labelled=None, binned=None):
 
     fts = pd.DataFrame(fts)
     if binned:
-        bins = binned[0]
-        mFts, sFts = binFeatures(fts, bins)
+        if type(binned) == int:
+            mFts, sFts = clusterFeatures(fts, binned)
+        else:
+            bins = binned[0]
+            mFts, sFts = binFeatures(fts, bins)
         return Ms, fts, mFts, sFts
     else:
         return Ms, fts
@@ -405,4 +410,17 @@ def binFeatures(ft, bins):
     ft['Group'] = labels
 
     mFts, sFts = ft.groupby(by='Group').mean(), ft.groupby(by='Group').std()
+    return mFts, sFts
+
+def clusterFeatures(ft, N):
+    fxy = ft[['x', 'y']]
+
+    # Clustering algorithm
+    i = np.random.randint(low=0, high=100)
+    cModel = KMeans(init='k-means++', n_clusters=N, n_init=i)
+    cModel.fit(fxy)
+    clusterCenters = cModel.cluster_centers_
+    cLabels = pairwise_distances_argmin(fxy, clusterCenters)
+
+    mFts, sFts = ft.groupby(by=cLabels).mean(), ft.groupby(by=cLabels).std()
     return mFts, sFts

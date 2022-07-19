@@ -3,7 +3,7 @@ import numpy.ma as ma
 import xml.etree.ElementTree as ET
 
 
-def read_xml(file):
+def read_xml(file, drop=20):
     """
     Converts trajectory datasets from XML files to numpy arrays formatted
     for diffpy
@@ -37,5 +37,12 @@ def read_xml(file):
             ys[frame, part] = float(particle.attrib['y'])
             frame += 1
         part += 1
+
+    # Drop trajectories that are too short
+    if drop:
+        steps, N = xs.shape
+        Ls = steps*np.average(~np.isnan(xs), axis=0) # trajectory lengths
+        tooShort = np.where(Ls < 20)
+        xs, ys = np.delete(xs, tooShort, axis=1), np.delete(ys, tooShort, axis=1)
 
     return xs, ys
