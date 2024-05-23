@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.optimize import curve_fit
 from scipy.ndimage.interpolation import rotate
 from scipy.spatial import ConvexHull
-import msds as msds
+from diffpy import msds
 from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import pairwise_distances_argmin
 
