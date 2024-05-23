@@ -65,5 +65,5 @@ MINOR = _version_minor
 MICRO = _version_micro
 VERSION = __version__
 PACKAGE_DATA = {'diffpy': [pjoin('data', '*')]}
-REQUIRES = ["numpy", "pandas", "scipy", "scikit-learn"]
+REQUIRES = ["numpy", "pandas", "scipy", "sklearn"]
 PYTHON_REQUIRES = ">= 3.5"
